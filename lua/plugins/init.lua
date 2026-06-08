@@ -1,5 +1,0 @@
-require("plugins.tree")
-require("plugins.git")
-require("plugins.lsp")
-require("plugins.cmp")
-require("plugins.format")
