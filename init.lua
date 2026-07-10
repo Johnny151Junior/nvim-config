@@ -50,6 +50,31 @@ local plugins = {
   {
     "nvim-telescope/telescope.nvim",
     dependencies = { "nvim-lua/plenary.nvim" },
+    config = function()
+      pcall(function()
+        require("telescope").setup({
+          defaults = {
+            vimgrep_arguments = {
+              "rg",
+              "--color=never",
+              "--no-heading",
+              "--with-filename",
+              "--line-number",
+              "--column",
+              "--smart-case",
+              "--hidden",
+              "--glob=!.git/",
+            },
+          },
+          pickers = {
+            find_files = {
+              hidden = true,
+              no_ignore = true,
+            },
+          },
+        })
+      end)
+    end,
   },
 
   {
@@ -60,6 +85,10 @@ local plugins = {
         require("nvim-tree").setup({
           view = {
             width = 32,
+          },
+          filters = {
+            dotfiles = false,
+            git_ignored = false,
           },
           renderer = {
             group_empty = true,
@@ -236,8 +265,20 @@ map("n", "<leader>e", "<cmd>NvimTreeToggle<cr>", { desc = "Toggle file tree" })
 map("n", "<leader>o", "<cmd>NvimTreeFocus<cr>", { desc = "Focus file tree" })
 
 -- Telescope
-map("n", "<leader>ff", "<cmd>Telescope find_files<cr>", { desc = "Find files" })
-map("n", "<leader>fg", "<cmd>Telescope live_grep<cr>", { desc = "Search text" })
+map("n", "<leader>ff", function()
+  require("telescope.builtin").find_files({
+    hidden = true,
+    no_ignore = true,
+  })
+end, { desc = "Find files" })
+
+map("n", "<leader>fg", function()
+  require("telescope.builtin").live_grep({
+    additional_args = function()
+      return { "--hidden", "--glob=!.git/" }
+    end,
+  })
+end, { desc = "Search text" })
 map("n", "<leader>fb", "<cmd>Telescope buffers<cr>", { desc = "Find buffers" })
 map("n", "<leader>fh", "<cmd>Telescope help_tags<cr>", { desc = "Help tags" })
 
