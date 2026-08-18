@@ -1,1 +1,2 @@
 WRN 2026-06-08T10:14:30.568 ?.8778     server_start:197: Failed to start server: operation not permitted: /var/folders/sd/rpsq_3r91n91wqqqdbb9wb0h0000gn/T/nvim.macbook/OwQoMs/nvim.8778.0
+WRN 2026-08-18T22:43:20.852 ?.98191    server_start:197: Failed to start server: operation not permitted: /var/folders/sd/rpsq_3r91n91wqqqdbb9wb0h0000gn/T/nvim.macbook/QWtnby/nvim.98191.0

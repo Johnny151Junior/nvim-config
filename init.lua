@@ -1,5 +1,27 @@
 vim.g.mapleader = " "
 
+local uv = vim.uv or vim.loop
+local data_path = vim.fn.stdpath("data")
+
+-- Ignore legacy packer start packages; this config is managed by lazy.nvim.
+local legacy_site_path = data_path .. "/site"
+if uv.fs_stat(legacy_site_path .. "/pack/packer/start") then
+  vim.opt.packpath:remove(legacy_site_path)
+  for _, plugin_path in ipairs(vim.fn.glob(legacy_site_path .. "/pack/packer/start/*", false, true)) do
+    vim.opt.rtp:remove(plugin_path)
+  end
+end
+
+local function safe_call(label, fn)
+  local ok, err = xpcall(fn, debug.traceback)
+  if not ok then
+    vim.schedule(function()
+      vim.notify(label .. " failed:\n" .. err, vim.log.levels.ERROR)
+    end)
+  end
+  return ok
+end
+
 -- Filetypes used by the current workflow.
 vim.filetype.add({
   filename = {
@@ -30,9 +52,9 @@ vim.g.loaded_netrw = 1
 vim.g.loaded_netrwPlugin = 1
 
 -- Bootstrap lazy.nvim if it is missing.
-local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
-if not vim.loop.fs_stat(lazypath) then
-  vim.fn.system({
+local lazypath = data_path .. "/lazy/lazy.nvim"
+if not uv.fs_stat(lazypath) then
+  local clone_result = vim.fn.system({
     "git",
     "clone",
     "--filter=blob:none",
@@ -40,6 +62,12 @@ if not vim.loop.fs_stat(lazypath) then
     "--branch=stable",
     lazypath,
   })
+  if vim.v.shell_error ~= 0 or not uv.fs_stat(lazypath) then
+    vim.schedule(function()
+      vim.notify("lazy.nvim bootstrap failed:\n" .. clone_result, vim.log.levels.ERROR)
+    end)
+    return
+  end
 end
 vim.opt.rtp:prepend(lazypath)
 
@@ -51,7 +79,7 @@ local plugins = {
     "nvim-telescope/telescope.nvim",
     dependencies = { "nvim-lua/plenary.nvim" },
     config = function()
-      pcall(function()
+      safe_call("telescope setup", function()
         require("telescope").setup({
           defaults = {
             vimgrep_arguments = {
@@ -81,7 +109,7 @@ local plugins = {
     "nvim-tree/nvim-tree.lua",
     dependencies = { "nvim-tree/nvim-web-devicons" },
     config = function()
-      pcall(function()
+      safe_call("nvim-tree setup", function()
         require("nvim-tree").setup({
           view = {
             width = 32,
@@ -101,7 +129,7 @@ local plugins = {
   {
     "lewis6991/gitsigns.nvim",
     config = function()
-      pcall(function()
+      safe_call("gitsigns setup", function()
         require("gitsigns").setup()
       end)
     end,
@@ -117,7 +145,7 @@ local plugins = {
   {
     "williamboman/mason.nvim",
     config = function()
-      pcall(function()
+      safe_call("mason setup", function()
         require("mason").setup()
       end)
     end,
@@ -127,7 +155,7 @@ local plugins = {
     "williamboman/mason-lspconfig.nvim",
     dependencies = { "williamboman/mason.nvim" },
     config = function()
-      pcall(function()
+      safe_call("mason-lspconfig setup", function()
         require("mason-lspconfig").setup({
           ensure_installed = {
             "gopls",
@@ -144,7 +172,7 @@ local plugins = {
     "WhoIsSethDaniel/mason-tool-installer.nvim",
     dependencies = { "williamboman/mason.nvim" },
     config = function()
-      pcall(function()
+      safe_call("mason-tool-installer setup", function()
         require("mason-tool-installer").setup({
           ensure_installed = {
             "goimports",
@@ -167,7 +195,7 @@ local plugins = {
       "hrsh7th/cmp-path",
     },
     config = function()
-      pcall(function()
+      safe_call("nvim-cmp setup", function()
         local cmp = require("cmp")
         cmp.setup({
           mapping = cmp.mapping.preset.insert({
@@ -189,7 +217,7 @@ local plugins = {
   {
     "stevearc/conform.nvim",
     config = function()
-      pcall(function()
+      safe_call("conform setup", function()
         require("conform").setup({
           formatters_by_ft = {
             go = { "goimports", "gofumpt" },
@@ -223,7 +251,7 @@ require("lazy").setup(plugins, {
   },
 })
 
-pcall(function()
+safe_call("lsp setup", function()
   local capabilities = require("cmp_nvim_lsp").default_capabilities()
 
   vim.lsp.config("gopls", {
@@ -303,11 +331,13 @@ end, { desc = "Format file" })
 vim.api.nvim_create_autocmd("BufWritePre", {
   group = vim.api.nvim_create_augroup("FormatOnSave", { clear = true }),
   callback = function(args)
-    require("conform").format({
-      bufnr = args.buf,
-      async = false,
-      lsp_format = "fallback",
-    })
+    safe_call("format on save", function()
+      require("conform").format({
+        bufnr = args.buf,
+        async = false,
+        lsp_format = "fallback",
+      })
+    end)
   end,
 })
 
